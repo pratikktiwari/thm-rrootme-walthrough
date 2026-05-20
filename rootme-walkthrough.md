@@ -102,7 +102,9 @@ Trigger the shell by clicking the uploaded file in `/uploads/`.
 python -c 'import pty;pty.spawn("/bin/bash")'
 ```
 
-Spawns an interactive TTY using Python's `pty` module for session stability.
+**TTY** (TeleTYpewriter) is a terminal interface that allows interactive input/output — features like tab-completion, arrow keys, and `Ctrl+C` require a TTY. A basic reverse shell doesn't allocate one, so you get a raw, unstable shell.
+
+**PTY** (Pseudo-TeleTY) is a software-emulated terminal. Python's `pty` module creates a pseudo-terminal and spawns `/bin/bash` inside it, upgrading your raw shell into a fully interactive session.
 
 ### 5. Find the User Flag
 
@@ -122,6 +124,27 @@ cat /var/www/user.txt
 ## Task 4: Privilege Escalation
 
 ### 1. Find SUID Binaries
+
+**SUID** (Set User ID) is a special Unix file permission. When the SUID bit is set on an executable, it runs with the privileges of the file's **owner** (not the user who launched it). If a root-owned binary has SUID set, any user executing it gets root-level access for that process — making misconfigured SUID binaries a common privilege escalation vector.
+
+**How the SUID bit is set:**
+
+```bash
+chmod u+s /path/to/binary    # symbolic form
+chmod 4755 /path/to/binary   # octal form (4 = SUID prefix)
+```
+
+Only root (or a process with `CAP_FOWNER`) can set the SUID bit. It's typically set during package installation for binaries that legitimately need elevated privileges (e.g., `passwd`, `ping`, `sudo`).
+
+**How to spot it:**
+
+```bash
+ls -l /usr/bin/passwd
+-rwsr-xr-x 1 root root ...
+#  ^ 's' instead of 'x' in the owner-execute position means SUID is set
+```
+
+> **CAP_FOWNER** is a Linux capability that lets a process bypass permission checks that normally require file ownership (like setting SUID bits, changing file permissions, etc.). Linux capabilities split root's monolithic power into granular units — a process can hold `CAP_FOWNER` without being fully root.
 
 ```bash
 find / -user root -perm -4000 2>/dev/null
