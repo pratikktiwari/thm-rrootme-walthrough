@@ -1,5 +1,7 @@
 # TryHackMe: RootMe Walkthrough
 
+> **Room:** [https://tryhackme.com/room/rrootme](https://tryhackme.com/room/rrootme)
+
 > A beginner CTF room. Deploy the machine and connect via OpenVPN or AttackBox.
 
 ---
